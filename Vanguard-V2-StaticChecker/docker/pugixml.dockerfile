@@ -5,9 +5,11 @@ ENV CXX=clang++-9
 
 WORKDIR /root/resource
 
-RUN wget https://github.com/zeux/pugixml/archive/refs/heads/master.zip && unzip master.zip && mv pugixml-master pugixml
+ENV ROOT=pugixml
 
-WORKDIR /root/resource/pugixml
+RUN wget https://github.com/zeux/pugixml/archive/refs/heads/master.zip && unzip master.zip && mv pugixml-master ${ROOT} && rm master.zip
+
+WORKDIR /root/resource/${ROOT}
 
 RUN cmake -DCMAKE_BUILD_TYPE=Release -DLLVM_PREFIX=/lib/llvm-9 .
 
@@ -18,4 +20,4 @@ RUN chmod +x buildast.sh
 RUN ./buildast.sh | tee buildast.log
 
 WORKDIR /root/output
-RUN ~/vanguard/cmake-build-debug/tools/CallGraphGen/cge ~/resource/pugixml/astList.txt
+RUN ~/vanguard/cmake-build-debug/tools/CallGraphGen/cge ~/resource/${ROOT}/astList.txt

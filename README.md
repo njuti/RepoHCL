@@ -51,7 +51,8 @@
 - 目前提供了docker/cmd.dockerfile，可以对测试项目md5进行一次完整的分析。本地运行依赖可参考该dockerfile。
 - RepoMetricV2使用到HuggingFace拉取远端模型，若网络不佳，可在.env中设置`HF_ENDPOINT=https://hf-mirror.com`。
 - 由于不同C/C++项目的编译方式不同，目前需要根据项目特征手动设置合适的命令以生成AST。
-- 在.env中设置`LOG_LEVEL`可以控制日志的输出级别，默认`DEBUG`级别。
+- 在.env中设置`LOG_LEVEL`可以控制日志的输出级别，默认`DEBUG`级别。注意：`DEBUG`级别默认使用单线程。
+- Windows下运行，建议使用UTF-8模式，例如：`python3 -X utf-8`
 
 ### TODO
 - 提高文档质量，增加对生成结果准确性的评估

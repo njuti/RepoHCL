@@ -49,4 +49,4 @@ class RagSettings:
     dim: int = field(default_factory=lambda: config('TOKENIZER_DIM', cast=int, default=1024))
 
 
-logger.add('application.log', level=ProjectSettings().log_level, rotation='1 day', retention='7 days', encoding='utf-8')
+logger.add('logs/application.log', level=ProjectSettings().log_level, rotation='1 day', retention='7 days', encoding='utf-8')

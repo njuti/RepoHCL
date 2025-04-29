@@ -5,9 +5,11 @@ ENV CXX=clang++-9
 
 WORKDIR /root/resource
 
-RUN wget https://github.com/leethomason/tinyxml2/archive/refs/heads/master.zip && unzip master.zip && mv tinyxml2-master tinyxml2
+ENV ROOT=tinyxml2
 
-WORKDIR /root/resource/tinyxml2
+RUN wget https://github.com/leethomason/tinyxml2/archive/refs/heads/master.zip && unzip master.zip && mv tinyxml2-master ${ROOT} && rm master.zip
+
+WORKDIR /root/resource/${ROOT}
 
 RUN cmake -DCMAKE_BUILD_TYPE=Release -DLLVM_PREFIX=/lib/llvm-9 .
 
@@ -18,4 +20,4 @@ RUN chmod +x buildast.sh
 RUN ./buildast.sh | tee buildast.log
 
 WORKDIR /root/output
-RUN ~/vanguard/cmake-build-debug/tools/CallGraphGen/cge ~/resource/tinyxml2/astList.txt
+RUN ~/vanguard/cmake-build-debug/tools/CallGraphGen/cge ~/resource/${ROOT}/astList.txt

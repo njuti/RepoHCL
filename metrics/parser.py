@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import json
 import os
 import re
@@ -244,17 +243,19 @@ class ClangParser(Metric):
 
         os.environ['CC'] = 'clang-9'
         os.environ['CXX'] = 'clang++-9'
-        # 生成makefile文件
+        # 若有configure文件，执行./configure
         if os.path.exists(os.path.join(resource_path, 'configure')):
             cmd('./configure')
         elif os.path.exists(os.path.join(resource_path, 'Configure')):
             cmd('./Configure')
+        if os.path.exists(os.path.join(resource_path, 'Makefile')):
+            # 基于makefile生成compile_commands.json
+            cmd('bear make -j`nproc`')
         elif os.path.exists(os.path.join(resource_path, 'CMakeLists.txt')):
-            cmd('cmake -DCMAKE_BUILD_TYPE=Release -DLLVM_PREFIX=/lib/llvm-9 .')
-        if not os.path.exists(os.path.join(resource_path, 'Makefile')):
-            raise Exception('Makefile not found in root')
-        # 基于makefile生成compile_commands.json
-        cmd('bear make -j`nproc`')
+            # 基于CMakeLists.txt生成compile_commands.json
+            cmd('cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=1 .')
+        else:
+            raise Exception('No Makefile or CMakeLists.txt found')
         # 生成 build ast 命令
         gen_sh(resource_path)
         # 生成.ast

@@ -5,15 +5,14 @@ ENV CXX=clang++-9
 
 WORKDIR /root/resource
 
-ENV ROOT=tinyxml2-11.0.0
+ENV ROOT=pugixml-1.15
 
-RUN wget https://github.com/leethomason/tinyxml2/archive/refs/tags/11.0.0.zip && \
-    unzip 11.0.0.zip && \
-    rm 11.0.0.zip && \
+RUN wget https://github.com/zeux/pugixml/releases/download/v1.15/pugixml-1.15.zip && \
+    unzip pugixml-1.15.zip && \
+    rm pugixml-1.15.zip && \
     cp -r ${ROOT} origin
 
 WORKDIR /root/resource/${ROOT}
-
 
 RUN bear make -j`nproc` && \
     python3 ~/vanguard/benchmark/genastcmd.py && \

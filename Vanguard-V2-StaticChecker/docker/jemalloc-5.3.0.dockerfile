@@ -7,7 +7,7 @@ WORKDIR /root/resource
 
 ENV ROOT=jemalloc-5.3.0
 
-RUN wget https://github.com/jemalloc/jemalloc/releases/download/5.3.0/jemalloc-5.3.0.tar.bz2 && tar -xvf jemalloc-5.3.0.tar.bz2 && rm jemalloc-5.3.0.tar.bz2
+RUN wget https://github.com/jemalloc/jemalloc/releases/download/5.3.0/jemalloc-5.3.0.tar.bz2 && tar -xvf jemalloc-5.3.0.tar.bz2 && rm jemalloc-5.3.0.tar.bz2 && cp -r ${ROOT} origin
 
 WORKDIR /root/resource/${ROOT}
 

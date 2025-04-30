@@ -18,8 +18,8 @@ fi
 echo "Library Name: $library"
 echo "Version: $version"
 
-docker build -f docker/base.dockerfile -t cg --build-arg HTTPS_PROXY=http://127.0.0.1:7897  --build-arg HTTPS_PROXY=http://127.0.0.1:7897 --network=host .
-docker build -f "$1" -t cg_"$library":"$version" --build-arg HTTPS_PROXY=http://127.0.0.1:7897  --build-arg HTTPS_PROXY=http://127.0.0.1:7897 --network=host  --progress=plain .
+docker build -f docker/base.dockerfile -t cg .
+docker build -f "$1" -t cg_"$library":"$version"  --progress=plain .
 
 container_id=$(docker create cg_"$library":"$version")
 
@@ -30,6 +30,7 @@ docker cp "${container_id}":/root/output/structs.json ../output/"${filename_no_e
 docker cp "${container_id}":/root/output/records.json ../output/"${filename_no_ext}"/
 docker cp "${container_id}":/root/output/typedefs.json ../output/"${filename_no_ext}"/
 docker cp "${container_id}":/root/vanguard/cmake-build-debug/tools/CallGraphGen/cge ../lib/
+docker cp "${container_id}":/root/resource/origin ../resource/"${filename_no_ext}"
 docker stop "${container_id}"
 docker rm "${container_id}"
 docker image prune -f

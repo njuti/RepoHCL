@@ -5,16 +5,18 @@ WORKDIR /root
 ENV CC=clang-9
 ENV CXX=clang++-9
 
-WORKDIR /root/vanguard
+ENV ROOT=vanguard
 
-RUN cmake -DCMAKE_BUILD_TYPE=Release -DLLVM_PREFIX=/lib/llvm-9 .
+RUN cp -r /root/vanguard /root/resource/${ROOT} && cp -r /root/vanguard /root/resource/origin
 
-RUN bear make -j`nproc`
-RUN cp ~/vanguard/benchmark/genastcmd.py .
-RUN python3 genastcmd.py
-RUN chmod +x buildast.sh
-RUN ./buildast.sh | tee buildast.log
+WORKDIR /root/resource/${ROOT}
+
+RUN cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=1 . && \
+    python3 ~/vanguard/benchmark/genastcmd.py && \
+    chmod +x buildast.sh && \
+    ./buildast.sh | tee buildast.log
 
 WORKDIR /root/output
 
-RUN ~/vanguard/cmake-build-debug/tools/CallGraphGen/cge ~/vanguard/astList.txt
+RUN ~/vanguard/cmake-build-debug/tools/CallGraphGen/cge ~/resource/${ROOT}/astList.txt && \
+    rm -rf ~/resource/${ROOT}

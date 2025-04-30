@@ -9,15 +9,18 @@ ENV ROOT=mbedtls-3.6.3
 
 WORKDIR /root/resource
 
-RUN wget https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-3.6.3/mbedtls-3.6.3.tar.bz2 && tar -xvf mbedtls-3.6.3.tar.bz2 && rm mbedtls-3.6.3.tar.bz2
+RUN wget https://github.com/Mbed-TLS/mbedtls/releases/download/mbedtls-3.6.3/mbedtls-3.6.3.tar.bz2 && \
+    tar -xvf mbedtls-3.6.3.tar.bz2 && \
+    rm mbedtls-3.6.3.tar.bz2 && \
+    cp -r ${ROOT} origin
 
 WORKDIR /root/resource/${ROOT}
 
-RUN bear make -j`nproc`
-RUN cp ~/vanguard/benchmark/genastcmd.py .
-RUN python3 genastcmd.py
-RUN chmod +x buildast.sh
-RUN ./buildast.sh | tee buildast.log
+RUN bear make -j`nproc` && \
+    python3 ~/vanguard/benchmark/genastcmd.py && \
+    chmod +x buildast.sh && \
+    ./buildast.sh | tee buildast.log \
 
 WORKDIR /root/output
-RUN ~/vanguard/cmake-build-debug/tools/CallGraphGen/cge ~/resource/${ROOT}/astList.txt
+RUN ~/vanguard/cmake-build-debug/tools/CallGraphGen/cge ~/resource/${ROOT}/astList.txt && \
+    rm -rf ~/resource/${ROOT}

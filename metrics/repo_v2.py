@@ -4,7 +4,7 @@ from typing import List, override
 from loguru import logger
 
 from utils import SimpleLLM, prefix_with, ChatCompletionSettings, SimpleRAG, RagSettings, TaskDispatcher, Task
-from utils.settings import llm_thread_pool, ProjectSettings
+from utils.settings import llm_thread_pool
 from . import RepoMetric
 from .doc import RepoDoc, ApiDoc
 
@@ -33,12 +33,13 @@ Please Note:
 # 为仓库生成文档V2，使用RAG验证文档的准确性
 class RepoV2Metric(RepoMetric):
     def eva(self, ctx):
-        if not self._check(ctx):
-            return
-        draft = self._draft(ctx)
-        questions = self._questions(ctx, draft)
-        answers = self._answer(ctx, draft, questions)
-        self._revise(ctx, draft, questions, answers)
+        try:
+            draft = self._draft(ctx)
+            questions = self._questions(ctx, draft)
+            answers = self._answer(ctx, draft, questions)
+            self._revise(ctx, draft, questions, answers)
+        except AssertionError as e:
+            logger.error(f'[RepoV2Metric] fail to gen doc for repo, err={e}')
 
     @classmethod
     @override

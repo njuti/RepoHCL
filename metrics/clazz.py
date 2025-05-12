@@ -15,27 +15,27 @@ class ClazzMetric(Metric):
         logger.info(f'[ClazzMetric] gen doc for class, class count: {len(callgraph)}')
 
         # 生成文档
-        def gen(symbol: str):
-            if ctx.load_clazz_doc(symbol):
-                logger.info(f'[ClazzMetric] load {symbol}')
+        def gen(signature: str):
+            if ctx.load_clazz_doc(signature):
+                logger.info(f'[ClazzMetric] load {signature}')
                 return
-            c: ClazzDef = ctx.clazz(symbol)
+            c: ClazzDef = ctx.clazz(signature)
             referenced = list(
                 filter(lambda s: s is not None,
-                       map(lambda s: ctx.load_clazz_doc(s), callgraph.predecessors(symbol)))
+                       map(lambda s: ctx.load_clazz_doc(s), callgraph.predecessors(signature)))
             )
             functions = list(
                 filter(lambda s: s is not None,
-                       map(lambda s: ctx.load_function_doc(s.symbol), c.functions))
+                       map(lambda s: ctx.load_function_doc(s.signature), c.functions))
             )
             prompt = ClazzPromptBuilder().attributes(c.fields).code(c.code).functions(
-                functions).referenced(referenced).lang(ctx.lang.markdown).name(symbol).build()
+                functions).referenced(referenced).lang(ctx.lang.markdown).name(signature).build()
             llm = SimpleLLM(ChatCompletionSettings())
             res = llm.add_system_msg(prompt).add_user_msg(documentation_guideline).ask()
-            res = f'### {symbol}\n' + res
+            res = f'### {signature}\n' + res
             doc = ClazzDoc.from_chapter(res)
-            ctx.save_clazz_doc(symbol, doc)
-            logger.info(f'[ClazzMetric] parse {symbol}')
+            ctx.save_clazz_doc(signature, doc)
+            logger.info(f'[ClazzMetric] parse {signature}')
 
         TaskDispatcher(llm_thread_pool).map(callgraph, gen).run()
 

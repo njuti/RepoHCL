@@ -159,6 +159,9 @@ class RepoMetric(Metric):
             return existed_draft_doc[0]
         # 使用模块文档组织上下文
         modules = ctx.load_module_docs()
+        # 若模块文档为空，报错
+        assert len(modules) > 0, 'no module found'
+        logger.info(f'[RepoMetric] gen doc for repo, modules count: {len(modules)}')
         modules_doc = '\n\n---\n\n'.join(map(lambda m: m.markdown(), modules))
         prompt = repo_summarize_prompt.format(modules_doc=prefix_with(modules_doc, '> '), lang=ctx.lang.markdown)
         res = SimpleLLM(ChatCompletionSettings()).add_user_msg(prompt).ask()
@@ -188,18 +191,6 @@ class RepoMetric(Metric):
 
         logger.info(f'[RepoMetric] gen doc for repo, questions inited')
         return questions
-
-
-    # 检查仓库文档能否生成
-    @classmethod
-    def _check(cls, ctx: EvaContext) -> bool:
-        modules = ctx.load_module_docs()
-        if len(modules) == 0:
-            logger.warning(f'[RepoMetric] no module found, cannot generate repo doc')
-            return False
-        logger.info(f'[RepoMetric] gen doc for repo, modules count: {len(modules)}')
-        return True
-
 
     # 回答问题
     @classmethod
@@ -270,9 +261,10 @@ class RepoMetric(Metric):
 
 
     def eva(self, ctx):
-        if not self._check(ctx):
-            return
-        draft = self._draft(ctx)
-        questions = self._questions(ctx, draft)
-        answers = self._answer(ctx, draft, questions)
-        self._revise(ctx, draft, questions, answers)
+        try:
+            draft = self._draft(ctx)
+            questions = self._questions(ctx, draft)
+            answers = self._answer(ctx, draft, questions)
+            self._revise(ctx, draft, questions, answers)
+        except ValueError as e:
+            logger.error(f'[RepoMetric] fail to gen doc for repo, err={e}')

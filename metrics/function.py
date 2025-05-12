@@ -22,26 +22,26 @@ class FunctionMetric(Metric):
         logger.info(f'[FunctionMetric] gen doc for functions, functions count: {len(callgraph)}')
 
         # 生成文档
-        def gen(symbol: str):
-            if ctx.load_function_doc(symbol):
-                logger.info(f'[FunctionMetric] load {symbol}')
+        def gen(signature: str):
+            if ctx.load_function_doc(signature):
+                logger.info(f'[FunctionMetric] load {signature}')
                 return
-            f: FuncDef = ctx.func(symbol)
+            f: FuncDef = ctx.func(signature)
             referencer = list(
                 filter(lambda s: s is not None,
-                       map(lambda s: ctx.load_function_doc(s), callgraph.successors(symbol)))
+                       map(lambda s: ctx.load_function_doc(s), callgraph.successors(signature)))
             )
             referenced = list(
                 filter(lambda s: s is not None,
-                       map(lambda s: ctx.load_function_doc(s), callgraph.predecessors(symbol)))
-            )
+                       map(lambda s: ctx.load_function_doc(s), callgraph.predecessors(signature)))
+            )[:5]
             prompt = _FunctionPromptBuilder().parameters(f.params).code(f.code).referencer(
-                referencer).referenced(referenced).lang(ctx.lang.markdown).name(symbol).build()
+                referencer).referenced(referenced).lang(ctx.lang.markdown).name(signature).build()
             res = SimpleLLM(ChatCompletionSettings()).add_system_msg(prompt).add_user_msg(documentation_guideline).ask()
-            res = f'### {symbol}\n' + res
+            res = f'### {signature}\n' + res
             doc = ApiDoc.from_chapter(res)
-            ctx.save_function_doc(symbol, doc)
-            logger.info(f'[FunctionMetric] parse {symbol}')
+            ctx.save_function_doc(signature, doc)
+            logger.info(f'[FunctionMetric] parse {signature}')
 
         TaskDispatcher(llm_thread_pool).map(callgraph, gen).run()
 

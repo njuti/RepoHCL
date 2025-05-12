@@ -8,6 +8,7 @@ import networkx as nx
 def prefix_with(s: str, p: str) -> str:
     return reduce(lambda x, y: x + y, map(lambda k: p + k + '\n', s.splitlines()))
 
+
 @dataclass
 class _Lang:
     render: str
@@ -16,12 +17,13 @@ class _Lang:
 
 
 class LangEnum(_Lang, Enum):
-    python = 'Rust', 'python', 'py'
     cpp = 'C/C++', 'c++', 'cpp'
+
     # TODO: 其他语言
     # rust = 'Rust', 'rust', 'rs'
-    # javascript = 'JavaScript', 'javascript', 'js'
+    javascript = 'JavaScript', 'javascript', 'js'
     # java = 'Java', 'java', 'java'
+    # python = 'Python', 'python', 'py'
 
     @classmethod
     def from_cli(cls, cli: str):
@@ -36,6 +38,7 @@ class LangEnum(_Lang, Enum):
             if lang.render == render:
                 return lang
         raise ValueError(f'Invalid language: {render}')
+
 
 # 去除有向图中的环，对于每个环，删除rank值最小的节点的入边
 def remove_cycle(callgraph: nx.DiGraph):

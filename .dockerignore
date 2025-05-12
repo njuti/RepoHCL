@@ -5,5 +5,5 @@ output
 docs
 __pycache__
 resource
-*.md
-*.log
+logs
+test

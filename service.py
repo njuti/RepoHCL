@@ -1,6 +1,7 @@
 import os.path
 import time
 import uuid
+from dataclasses import field
 from enum import Enum
 from typing import Optional, List, Dict
 
@@ -21,6 +22,7 @@ class RATask(BaseModel):
     repo: str  # 仓库OSS地址
     callback: str  # 回调URL
     language: str = LangEnum.cpp.render  # 语言
+    name: str = ''
 
 
 class RAStatus(Enum):
@@ -104,8 +106,10 @@ def run_with_response(path: str, req: RATask):
         ctx = EvaContext(doc_path=os.path.join('docs', path), resource_path=os.path.join('resource', path),
                          output_path=os.path.join('output', path), lang=lang)
         eva(ctx, lang)
-        data = EvaResult(functions=list(map(lambda x: ctx.load_function_doc(x.symbol).model_dump(), filter(lambda x: x.visible, ctx.func_iter()))),
-                         classes=list(map(lambda x: ctx.load_clazz_doc(x.symbol).model_dump(), filter(lambda x: x.visible, ctx.clazz_iter()))),
+        data = EvaResult(functions=list(map(lambda x: ctx.load_function_doc(x.signature).model_dump(),
+                                            filter(lambda x: x.visible, ctx.func_iter()))),
+                         classes=list(map(lambda x: ctx.load_clazz_doc(x.signature).model_dump(),
+                                          filter(lambda x: x.visible, ctx.clazz_iter()))),
                          modules=list(map(lambda x: x.model_dump(), ctx.load_module_docs())),
                          repo=[ctx.load_repo_doc().model_dump()])
 
@@ -133,6 +137,7 @@ class CompReq(BaseModel):
     results: List[str]
     requestId: str
     callback: str
+    names: List[str] = field(default_factory=lambda: ['software1', 'software2'])
 
 
 class CompResult(BaseModel):

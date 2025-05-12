@@ -33,7 +33,7 @@ You'd better consider the following workflow:
 3. Name the Module in the required language. Review the core functionalities and the use case to come up with a suitable name for the module to replace the placeholder "Module Name" in the template. Remember that this is just a module of the software. Don't make it too broad.
 
 Please Note:
-- #### Functions is a list of function names included in this module. Please use the full function name with the return type and parameters, not the abbreviation.
+- #### Functions is a list of function signatures included in this module. Please use the complete function signature with the return type and parameters, like {api_example}, not the abbreviation.
 - The Level 4 headings in the format like `#### Description` are fixed, don't change or translate them. Don't add new Level 3 or Level 4 headings. Do not write anything outside the format.
 - Don't add divider lines like `---` between multiple modules.
 '''
@@ -63,7 +63,7 @@ You'd better consider the following workflow:
 4. Name the Merged Module in the required language. Based on the functions and use cases of the merged modules, come up with a suitable name for the merged module to replace the placeholder "Module Name" in the template. Remember that this is just a module of the software. Don't make it too broad.
 
 Please Note:
-- #### Functions is a list of function names included in this module. Please use the full function name with the return type and parameters, not the abbreviation.
+- #### Functions is a list of function signatures included in this module. Please use the complete function signature with the return type and parameters, like {api_example}, not the abbreviation.
 - The Level 4 headings in the format like `#### Description` are fixed, don't change or translate them. Don't add new Level 3 or Level 4 headings. Do not write anything outside the format.
 - Don't omit any modules related to the software's core functionalities. If they cannot be merged, keep them.
 - Don't add divider lines like `---` between multiple modules.
@@ -77,17 +77,19 @@ class ModuleV2Metric(ModuleMetric):
 
     @classmethod
     def get_v2_draft_filename(cls, ctx):
-        return os.path.join(ctx.doc_path, 'modules-v2-draft.md')
+        return os.path.join(ctx.doc_path, 'modules.v2.draft.md')
 
     def eva(self, ctx):
-        if not self._check(ctx):
-            return
-        # 使用聚类算法初步划分模块，并由大模型总结模块文档
-        drafts = self._draft_v2(ctx)
-        # 由大模型合并模块文档
-        drafts = self._merge(ctx, drafts)
-        # 由大模型增强模块文档
-        self._enhance(ctx, drafts)
+        try:
+            # 使用聚类算法初步划分模块，并由大模型总结模块文档
+            drafts = self._draft_v2(ctx)
+            # 由大模型合并模块文档
+            drafts = self._merge(ctx, drafts)
+            # 由大模型增强模块文档
+            self._enhance(ctx, drafts)
+        except AssertionError as e:
+            logger.error(f'[ModuleV2Metric] fail to gen doc for module, err: {e}')
+            raise e
 
     # 将API分组，对每组API生成模块初稿
     @classmethod
@@ -97,7 +99,9 @@ class ModuleV2Metric(ModuleMetric):
             logger.info(f'[ModuleV2Metric] load module drafts, modules count: {len(existed_draft_doc)}')
             return existed_draft_doc
         # 提取所有用户可见的函数
-        apis: List[str] = list(map(lambda x: x.symbol, filter(lambda x: x.visible, ctx.func_iter())))
+        apis: List[str] = ctx.api_iter()
+        # 如果没有API，报错
+        assert len(apis) > 0, 'no api found'
         rag = SimpleRAG(RagSettings())
         logger.info('[ModuleV2Metric] clustering...')
         cluster = rag.kmeans(
@@ -111,7 +115,7 @@ class ModuleV2Metric(ModuleMetric):
             api_docs = reduce(lambda x, y: x + y,
                               map(lambda x: f'- {apis[x]}\n > {ctx.load_function_doc(apis[x]).description}\n\n',
                                   g))
-            prompt2 = modules_prompt.format(api_doc=prefix_with(api_docs, '>'))
+            prompt2 = modules_prompt.format(api_doc=prefix_with(api_docs, '>'), api_example=g[0])
             # 生成模块文档
             res = SimpleLLM(ChatCompletionSettings()).add_user_msg(prompt2).ask(lambda x: x.replace('---', '').strip())
             docs = ModuleDoc.from_doc(res)
@@ -133,7 +137,7 @@ class ModuleV2Metric(ModuleMetric):
             logger.info(f'[ModuleV2Metric] load modules, modules count: {len(existed_draft_doc)}')
             return existed_draft_doc
         prompt = modules_merge_prompt.format(
-            module_doc=prefix_with('\n'.join(map(lambda x: x.markdown(), drafts)), '>'))
+            module_doc=prefix_with('\n'.join(map(lambda x: x.markdown(), drafts)), '>'), api_example=ctx.api_iter()[0])
         res = SimpleLLM(ChatCompletionSettings()).add_user_msg(prompt).ask(lambda x: x.replace('---', '').strip())
         docs = ModuleDoc.from_doc(res)
         # 保存模块文档初稿，若模块中只有一个函数，则舍弃

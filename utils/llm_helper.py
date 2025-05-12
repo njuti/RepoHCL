@@ -2,12 +2,13 @@ import json
 import time
 from typing import Callable
 
+from httpx import ReadTimeout
 from loguru import logger
 from openai import OpenAI, Stream
 from openai.types.chat import ChatCompletionChunk
-from httpx import ReadTimeout
 
-from .settings import ProjectSettings, ChatCompletionSettings
+from .settings import ChatCompletionSettings
+
 
 # 通用的LLM代理
 class SimpleLLM:
@@ -62,39 +63,24 @@ class SimpleLLM:
             raise e
 
     def _get_stream_response(self, response: Stream[ChatCompletionChunk]) -> str:
-        is_thinking = False
+        thinking_content = ''
         answer_content = ''
         for chunk in response:
             if chunk.choices:
                 delta = chunk.choices[0].delta
                 if hasattr(delta, 'reasoning_content') and delta.reasoning_content is not None:
-                    if not ProjectSettings().is_debug():
-                        continue
-                    # 打印思考过程
-                    if not is_thinking:
-                        print('=' * 10 + 'thinking' + '=' * 10)
-                        is_thinking = True
-                    print(delta.reasoning_content, end='', flush=True)
+                    thinking_content += delta.reasoning_content
                 else:
                     answer_content += delta.content
-                    if not ProjectSettings().is_debug():
-                        continue
-                    # 打印回复过程
-                    if is_thinking:
-                        print('\n' + '=' * 10 + 'answering' + '=' * 10)
-                        is_thinking = False
-                    print(delta.content, end='', flush=True)
-
 
             if chunk.usage:
-                if ProjectSettings().is_debug():
-                    print()
                 logger.debug(
-                    f'[SimpleLLM] chat {chunk.id}: token usage(prompt {chunk.usage.prompt_tokens}, response {chunk.usage.completion_tokens}')
-
-        if ProjectSettings().is_debug():
-            with open('prompt.md', 'a') as d:
-                d.write('\n'.join(list(map(lambda s: s.get('content'), self._history))) + '\n\n---\n\n')
+                    f'[SimpleLLM] chat {chunk.id}: \n'
+                    f'token usage(prompt {chunk.usage.prompt_tokens}, response {chunk.usage.completion_tokens})\n'
+                    f'----prompt----\n'
+                    f'{"\n".join("--{}--\n{}".format(msg["role"], msg["content"]) for msg in self._history)}\n' +
+                    (f'----thinking----: \n{thinking_content}\n' if len(thinking_content) else '') +
+                    f'----answer----: \n{answer_content}')
         return answer_content
 
     def add_file(self, path: str):

@@ -31,7 +31,7 @@ You'd better consider the following workflow:
 5. Generate Documentation. Write a summary for each module using the provided format you finally decide and put them together. Don't include any other content in the output. 
 
 Please Note:
-- #### Functions is a list of function names included in this module. Please use the full function name with the return type and parameters, not the abbreviation.
+- #### Functions is a list of function signatures included in this module. Please use the complete function signature with the return type and parameters, like {api_example}, not the abbreviation.
 - Try to put every function into at least one module unless the function is really useless.
 - The Level 4 headings in the format like `#### xxx` are fixed, don't change or translate them. Don't add new Level 3 or Level 4 headings. Do not write anything outside the format
 
@@ -66,7 +66,7 @@ You'd better consider the following workflow:
 
 Please Note:
 - If all functions are related to the module tightly, you don't need to remove any functions.
-- #### Functions is a list of function names included in this module. Please use the full function name with the return type and parameters, not the abbreviation.
+- #### Functions is a list of function signatures included in this module. Please use the complete function signature with the return type and parameters, like {api_example}, not the abbreviation.
 - You can revise the content in #### Description if it's not consistent with the answers to the questions.
 - The Level 4 headings in the format like `#### xxx` are fixed, don't change or translate them. 
 - Don't write new Level 3 or Level 4 headings. Don't write anything outside the format. 
@@ -88,7 +88,7 @@ class ModuleMetric(Metric):
 
     @classmethod
     def get_draft_filename(cls, ctx):
-        return os.path.join(ctx.doc_path, 'modules.v1_draft.md')
+        return os.path.join(ctx.doc_path, 'modules.v1.draft.md')
 
     @classmethod
     def _draft(cls, ctx) -> List[ModuleDoc]:
@@ -97,14 +97,23 @@ class ModuleMetric(Metric):
             logger.info(f'[ModuleMetric] load drafts, modules count: {len(existed_draft_doc)}')
             return existed_draft_doc
         # 提取所有用户可见的函数
-        apis: List[str] = list(map(lambda x: x.symbol, filter(lambda x: x.visible, ctx.func_iter())))
+        apis: List[str] = ctx.api_iter()
+        # 如果没有API，报错
+        assert len(apis) > 0, 'no api found'
         # 使用函数描述组织上下文
         api_docs = reduce(lambda x, y: x + y,
                           map(lambda a: f'- {a}\n > {ctx.load_function_doc(a).description}\n\n', apis))
-        prompt = modules_summarize_prompt.format(api_docs=api_docs)
+        prompt = modules_summarize_prompt.format(api_docs=api_docs, api_example=apis[0])
         # 生成模块文档
+        # TODO：模块文档格式总不规范，LLMs常篡改函数名称，导致函数无法找到
         res = SimpleLLM(ChatCompletionSettings()).add_user_msg(prompt).ask()
         modules = ModuleDoc.from_doc(res)
+        for m in modules:
+            functions = m.functions
+            # 检查函数是否存在
+            for f in list(filter(lambda x: not ctx.func(x), functions)):
+                logger.warning(f'[ModuleMetric] module {m.name} contains unknown function: {f}')
+            m.functions = list(filter(lambda x: ctx.func(x) is not None, functions))
         # 保存模块文档初稿，若模块中只有一个函数，则舍弃
         modules = list(filter(lambda x: len(modules) == 1 or len(x.functions) > 1, modules))
         for m in modules:
@@ -124,14 +133,19 @@ class ModuleMetric(Metric):
             # 使用完整函数文档组织上下文
             functions_doc = []
             for f in m.functions:
-                try:
-                    functions_doc.append(ctx.load_function_doc(f).markdown())
-                except KeyError:
-                    logger.warning(f'[ModuleMetric] function doc not found: {f}')
+                doc = ctx.load_function_doc(f)
+                if doc is None:
+                    logger.warning(f'[ModuleMetric] function {f} not found')
+                    continue
+                functions_doc.append(doc.markdown())
+            if len(functions_doc) == 0:
+                logger.warning(f'[ModuleMetric] module {m.name} contains no function')
+                return
             functions_doc = prefix_with('\n---\n'.join(functions_doc), '> ')
             # 使用原模块文档组织上下文
             module_doc = prefix_with(m.markdown(), '> ')
-            prompt2 = modules_enhance_prompt.format(module_doc=module_doc, functions_doc=functions_doc, lang=ctx.lang.markdown)
+            prompt2 = modules_enhance_prompt.format(module_doc=module_doc, functions_doc=functions_doc,
+                                                    lang=ctx.lang.markdown,  api_example=m.functions[0])
             # 生成模块文档
             res = SimpleLLM(ChatCompletionSettings()).add_user_msg(prompt2).ask()
             doc = ModuleDoc.from_chapter(res)
@@ -141,17 +155,10 @@ class ModuleMetric(Metric):
 
         TaskDispatcher(llm_thread_pool).adds(list(map(lambda args: Task(f=gen, args=args), enumerate(drafts)))).run()
 
-    @classmethod
-    def _check(cls, ctx: EvaContext) -> bool:
-        apis: List[str] = list(map(lambda x: x.symbol, filter(lambda x: x.visible, ctx.func_iter())))
-        if len(apis) == 0:
-            logger.warning(f'[ModuleMetric] no apis found, cannot generate modules docs')
-            return False
-        logger.info(f'[ModuleMetric] apis count: {len(apis)}')
-        return True
-
     def eva(self, ctx):
-        if not self._check(ctx):
-            return
-        drafts = self._draft(ctx)
-        self._enhance(ctx, drafts)
+        try:
+            drafts = self._draft(ctx)
+            self._enhance(ctx, drafts)
+        except AssertionError as e:
+            logger.error(f'[ModuleMetric] fail to gen doc for module, err: {e}')
+            raise e

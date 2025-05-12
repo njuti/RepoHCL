@@ -1,35 +1,18 @@
-FROM ubuntu:20.04
-
-RUN sed -i 's@archive.ubuntu.com@mirrors.aliyun.com@g' /etc/apt/sources.list && \
-    sed -i 's@security.ubuntu.com@mirrors.aliyun.com@g' /etc/apt/sources.list
-
-# 设置默认时区，后面按照依赖包安装时会用到
-RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && echo "Asia/Shanghai" > /etc/timezone
-
-RUN apt update
-
-RUN apt install -y build-essential llvm-9-dev cmake ninja-build clang-9 libclang-9-dev zlib1g-dev wget bear nodejs npm unzip software-properties-common
-
-RUN add-apt-repository -y ppa:deadsnakes/ppa && apt install -y python3.12 python3.12-venv
+FROM applerodite/repohcl-base
 
 WORKDIR /root/
 
-COPY . .
-
-RUN wget https://github.com/talent518/md5/archive/refs/heads/master.zip && unzip master.zip && mv md5-master md5 && rm master.zip
-
 ENV VIRTUAL_ENV=/root/venv
-
-RUN python3.12 -m venv $VIRTUAL_ENV
-
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+ADD requirements.txt .
+
+RUN python3.12 -m venv $VIRTUAL_ENV && \
+    pip config set global.index-url https://mirrors.aliyun.com/pypi/simple && \
+    pip install -r requirements.txt
 
 ENV HF_ENDPOINT=https://hf-mirror.com
 
-RUN pip config set global.index-url https://mirrors.aliyun.com/pypi/simple && pip install -r requirements.txt
+COPY . .
 
-RUN python3 main.py md5
-
-RUN npm config set registry http://registry.npm.taobao.org/ && npm install -g gitbook-cli && gitbook init docs/md5
-
-CMD ["gitbook", "serve", "docs/md5"]
+ENTRYPOINT ["python3", "main.py"]

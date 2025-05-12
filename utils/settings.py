@@ -1,3 +1,4 @@
+import os
 from concurrent.futures.thread import ThreadPoolExecutor
 from dataclasses import field, dataclass
 from enum import StrEnum
@@ -19,12 +20,10 @@ class LogLevel(StrEnum):
 @dataclass
 class ProjectSettings:
     log_level: LogLevel = field(default_factory=lambda: config('LOG_LEVEL', cast=LogLevel, default=LogLevel.INFO))
-
-    def is_debug(self):
-        return self.log_level == LogLevel.DEBUG
+    threads: int = field(default_factory=lambda: config('THREADS', cast=int, default=os.cpu_count() * 4))
 
 
-llm_thread_pool = ThreadPoolExecutor(1) if ProjectSettings().is_debug() else ThreadPoolExecutor(16)
+llm_thread_pool = ThreadPoolExecutor(ProjectSettings().threads)
 
 
 @dataclass
@@ -49,4 +48,7 @@ class RagSettings:
     dim: int = field(default_factory=lambda: config('TOKENIZER_DIM', cast=int, default=1024))
 
 
-logger.add('logs/application.log', level=ProjectSettings().log_level, rotation='1 day', retention='7 days', encoding='utf-8')
+logger.add('logs/application.log', level=ProjectSettings().log_level, rotation='1 day', retention='7 days',
+           encoding='utf-8')
+logger.add('logs/llm.log', level=ProjectSettings().log_level, rotation='1 day', retention='3 days',
+           encoding='utf-8', filter=lambda record: record['message'].startswith(('[SimpleLLM]', '[ToolsLLM]')))

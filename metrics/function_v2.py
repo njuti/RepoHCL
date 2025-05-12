@@ -33,23 +33,23 @@ class FunctionV2Metric(Metric):
         logger.info(f'[FunctionV2Metric] gen doc for functions, functions count: {len(callgraph)}')
 
         # 生成文档
-        def gen(symbol: str):
-            f: FuncDef = ctx.func(symbol)
-            if ctx.load_doc(symbol, cls.get_v2_draft_filename(ctx, f.filename), ApiDoc):
-                logger.info(f'[FunctionV2Metric] load {symbol}')
+        def gen(signature: str):
+            f: FuncDef = ctx.func(signature)
+            if ctx.load_doc(signature, cls.get_v2_draft_filename(ctx, f.filename), ApiDoc):
+                logger.info(f'[FunctionV2Metric] load {signature}')
                 return
             referenced = list(
                 filter(lambda s: s is not None,
-                       map(lambda s: ctx.load_function_doc(s), callgraph.successors(symbol)))
+                       map(lambda s: ctx.load_function_doc(s), callgraph.successors(signature)))
             )
             prompt = _FunctionPromptBuilder().parameters(f.params).code(f.code).referenced(
-                referenced).lang(ctx.lang.markdown).name(symbol).build()
+                referenced).lang(ctx.lang.markdown).name(signature).build()
             res = SimpleLLM(ChatCompletionSettings()).add_system_msg(prompt).add_user_msg(documentation_guideline).ask()
-            res = f'### {symbol}\n' + res
+            res = f'### {signature}\n' + res
             doc = ApiDoc.from_chapter(res)
             doc.code = f'```{ctx.lang.markdown}\n{f.code}\n```'
             ctx.save_doc(cls.get_v2_draft_filename(ctx, f.filename), doc)
-            logger.info(f'[FunctionV2Metric] parse {symbol}')
+            logger.info(f'[FunctionV2Metric] parse {signature}')
 
         TaskDispatcher(llm_thread_pool).map(callgraph, gen).run()
 
@@ -59,18 +59,18 @@ class FunctionV2Metric(Metric):
         logger.info(f'[FunctionV2Metric] revise doc for functions, functions count: {len(callgraph)}')
 
         # 生成文档
-        def gen(symbol: str):
-            if ctx.load_function_doc(symbol):
-                logger.info(f'[FunctionV2Metric] load revised {symbol}')
+        def gen(signature: str):
+            if ctx.load_function_doc(signature):
+                logger.info(f'[FunctionV2Metric] load revised {signature}')
                 return
-            f: FuncDef = ctx.func(symbol)
+            f: FuncDef = ctx.func(signature)
             referencer: List[ApiDoc] = list(
                 filter(lambda s: s is not None,
-                       map(lambda s: ctx.load_function_doc(s), callgraph.predecessors(symbol)))
-            )
-            draft_doc = ctx.load_doc(symbol, cls.get_v2_draft_filename(ctx, f.filename), ApiDoc)
+                       map(lambda s: ctx.load_function_doc(s), callgraph.predecessors(signature)))
+            )[:5]
+            draft_doc = ctx.load_doc(signature, cls.get_v2_draft_filename(ctx, f.filename), ApiDoc)
             if len(referencer) == 0:
-                ctx.save_function_doc(symbol, draft_doc)
+                ctx.save_function_doc(signature, draft_doc)
                 return
             # TODO，简化
             prompt = doc_revised_prompt.format(referencer=reduce(
@@ -87,11 +87,11 @@ class FunctionV2Metric(Metric):
             res = SimpleLLM(ChatCompletionSettings()).add_system_msg(prompt).add_user_msg(documentation_guideline).ask(
                 lambda x: x[x.find('#### Description'):] # 去除标题
             )
-            res = f'### {symbol}\n' + res
+            res = f'### {signature}\n' + res
             doc: ApiDoc = ApiDoc.from_chapter(res)
             doc.code = f'```{ctx.lang.markdown}\n{f.code}\n```'
-            ctx.save_function_doc(symbol, doc)
-            logger.info(f'[FunctionV2Metric] revise {symbol}')
+            ctx.save_function_doc(signature, doc)
+            logger.info(f'[FunctionV2Metric] revise {signature}')
 
         TaskDispatcher(llm_thread_pool).map(nx.reverse(callgraph), gen).run()
 
@@ -145,7 +145,7 @@ There are some points you need to pay attention to:
 1. Ensure that the Description is concise and accurate.
 2. Ensure that the Function is called correctly in Example.
 
-The improved README should keep the same format as before. To ensure the same format, you should follow the standard format in the Markdown reference paragraph below. You do not need to write the reference symbols `>` when you output:
+The improved README should keep the same format as before. To ensure the same format, you should follow the standard format in the Markdown reference paragraph below. You do not need to write the reference signatures `>` when you output:
 
 > #### Description
 > Briefly describe the Function in one sentence.

@@ -19,6 +19,13 @@ def isValidStruct(s: TypeDecl): Boolean = {
         regex.findFirstIn(s.code).isDefined
 }
 
+def getTypeFullName(t: String): String = {
+    if (t == "ANY") {
+        return "auto"
+    }
+    t
+}
+
 def generateFunctionSignature(m: Method): String = {
     val name = m.name
     val returnType = getTypeFullName(m.methodReturn.typeFullName)

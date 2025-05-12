@@ -1,4 +1,3 @@
-from .ast_generator import gen_sh
 from .common import prefix_with, LangEnum, remove_cycle
 from .file_helper import resolve_archive
 from .llm_helper import SimpleLLM, ToolsLLM

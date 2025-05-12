@@ -1,3 +1,4 @@
+import json
 import os.path
 import time
 import uuid
@@ -106,12 +107,14 @@ def run_with_response(path: str, req: RATask):
         ctx = EvaContext(doc_path=os.path.join('docs', path), resource_path=os.path.join('resource', path),
                          output_path=os.path.join('output', path), lang=lang)
         eva(ctx, lang)
+        repo_doc = ctx.load_repo_doc()
+        repo_doc = [repo_doc.model_dump()] if repo_doc is not None else []
         data = EvaResult(functions=list(map(lambda x: ctx.load_function_doc(x.signature).model_dump(),
                                             filter(lambda x: x.visible, ctx.func_iter()))),
                          classes=list(map(lambda x: ctx.load_clazz_doc(x.signature).model_dump(),
                                           filter(lambda x: x.visible, ctx.clazz_iter()))),
                          modules=list(map(lambda x: x.model_dump(), ctx.load_module_docs())),
-                         repo=[ctx.load_repo_doc().model_dump()])
+                         repo=repo_doc)
 
         # 回调传结果，重试几次
         requests_with_retry(req.callback,
@@ -122,8 +125,10 @@ def run_with_response(path: str, req: RATask):
                             .model_dump_json(exclude_none=True, exclude_unset=True))
     except Exception as e:
         logger.error(f'fail to generate doc for {path}, err={e}')
+        # 回调传错误
+        data = json.dumps({'repo': {'description': str(e)}})
         requests_with_retry(req.callback,
-                            content=RAResult(id=req.id, status=RAStatus.fail.value, message=str(e)).model_dump_json(
+                            content=RAResult(id=req.id, status=RAStatus.fail.value, message=str(e), result=data).model_dump_json(
                                 exclude_none=True, exclude_unset=True))
     # 清扫工作路径
     # shutil.rmtree(f'resource/{path}')

@@ -6,13 +6,6 @@ def isValidMethod(m: Method): Boolean = {
     !m.isExternal && !m.filename.startsWith("<") && !m.code.startsWith("<")
 }
 
-def getTypeFullName(t: String): String = {
-    if (t == "ANY") {
-        return "auto"
-    }
-    t
-}
-
 def isValidStruct(s: TypeDecl): Boolean = {
     val regex = """(class|struct)[\w\s]*\{""".r
     !s.isExternal && !s.filename.startsWith("<") && !s.code.startsWith("<") &&
@@ -29,7 +22,7 @@ def getTypeFullName(t: String): String = {
 def generateFunctionSignature(m: Method): String = {
     val name = m.name
     val returnType = getTypeFullName(m.methodReturn.typeFullName)
-    val parameters = m.parameter.map(p => s"${getTypeFullName(p.typeFullName)} ${p.name}").mkString(", ")
+    val parameters = m.parameter.map(p => s"${getTypeFullName(p.typeFullName)}").mkString(", ")
     s"$returnType $name($parameters)"
 }
 

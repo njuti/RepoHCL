@@ -3,10 +3,10 @@ from typing import List, override
 
 from loguru import logger
 
-from utils import SimpleLLM, prefix_with, ChatCompletionSettings, SimpleRAG, RagSettings, TaskDispatcher, Task
-from utils.settings import llm_thread_pool
-from . import RepoMetric
+from utils import SimpleLLM, prefix_with, ChatCompletionSettings, SimpleRAG, RagSettings, TaskDispatcher, Task, \
+    ProjectSettings
 from .doc import RepoDoc, ApiDoc
+from .repo import RepoMetric
 
 qa_prompt = '''
 You are an expert on software engineering. 
@@ -67,7 +67,7 @@ class RepoV2Metric(RepoMetric):
             answers[i] = SimpleLLM(ChatCompletionSettings()).add_user_msg(q_prompt).ask()
             logger.info(f'[RepoV2Metric] answer question {i + 1}')
 
-        TaskDispatcher(llm_thread_pool).adds(
+        TaskDispatcher(ProjectSettings.llm_thread_pool).adds(
             list(map(lambda args: Task(f=answer_qa, args=args), enumerate(questions)))).run()
         # 保存仓库文档QA-Answer
         with open(cls.get_qa_answer_filename(ctx), 'w') as f:

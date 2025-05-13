@@ -1,11 +1,10 @@
 import os
-from functools import reduce
 from typing import List
 
 from loguru import logger
 
-from utils import SimpleLLM, prefix_with, ChatCompletionSettings, SimpleRAG, RagSettings, TaskDispatcher, \
-    llm_thread_pool, Task
+from utils import SimpleLLM, prefix_with, ChatCompletionSettings, SimpleRAG, RagSettings, TaskDispatcher, Task, \
+    ProjectSettings
 from . import ModuleMetric
 from .doc import ModuleDoc
 from .metric import EvaContext
@@ -72,7 +71,8 @@ Please Note:
 
 
 # 为模块生成文档V2，
-# 本质上是先分解再合并，分解时使用聚类算法，合并时使用大模型。V2的效果并不比V1更好，但减少了上下文量。当具备1000个API时，V1的上下文量达到64+K。V2的上下文量则在10K以内。
+# 本质上是先分解再合并，分解时使用聚类算法，合并时使用大模型。V2的效果并不比V1更好，但减少了上下文量。
+# 当具备1000个API时，V1的上下文量达到64+K。V2的上下文量则在10K以内。
 class ModuleV2Metric(ModuleMetric):
 
     @classmethod
@@ -108,13 +108,9 @@ class ModuleV2Metric(ModuleMetric):
             list(map(lambda x: x.name + ': ' + x.description, map(lambda x: ctx.load_function_doc(x), apis))))
         logger.info(f'[ModuleV2Metric] cluster to {len(cluster)} groups')
 
-        drafts = []
-
         def gen(g: List[int]):
             # 使用函数描述组织上下文
-            api_docs = reduce(lambda x, y: x + y,
-                              map(lambda x: f'- {apis[x]}\n > {ctx.load_function_doc(apis[x]).description}\n\n',
-                                  g))
+            api_docs = ''.join(map(lambda x: f'- {apis[x]}\n > {ctx.load_function_doc(apis[x]).description}\n\n', g))
             prompt2 = modules_prompt.format(api_doc=prefix_with(api_docs, '>'), api_example=g[0])
             # 生成模块文档
             res = SimpleLLM(ChatCompletionSettings()).add_user_msg(prompt2).ask(lambda x: x.replace('---', '').strip())
@@ -124,10 +120,10 @@ class ModuleV2Metric(ModuleMetric):
                 ctx.save_doc(cls.get_v2_draft_filename(ctx), doc)
                 logger.info(f'[ModuleV2Metric] gen draft for module {doc.name}')
             # 由于GIL锁，多线程下，extend是原子操作，线程安全
-            drafts.extend(docs)
 
-        TaskDispatcher(llm_thread_pool).adds(list(map(lambda args: Task(f=gen, args=(args,)), cluster))).run()
-        return drafts
+        TaskDispatcher(ProjectSettings.llm_thread_pool).adds(
+            list(map(lambda args: Task(f=gen, args=(args,)), cluster))).run()
+        return ctx.load_docs(cls.get_v2_draft_filename(ctx), ModuleDoc)
 
     # 合并模块初稿
     @classmethod

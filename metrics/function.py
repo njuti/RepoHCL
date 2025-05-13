@@ -2,8 +2,7 @@ from typing import List
 
 from loguru import logger
 
-from utils import SimpleLLM, ChatCompletionSettings, prefix_with, TaskDispatcher
-from utils.settings import llm_thread_pool
+from utils import SimpleLLM, ChatCompletionSettings, ProjectSettings, prefix_with, TaskDispatcher
 from .doc import ApiDoc
 from .metric import Metric, FieldDef, FuncDef
 
@@ -43,7 +42,7 @@ class FunctionMetric(Metric):
             ctx.save_function_doc(signature, doc)
             logger.info(f'[FunctionMetric] parse {signature}')
 
-        TaskDispatcher(llm_thread_pool).map(callgraph, gen).run()
+        TaskDispatcher(ProjectSettings.llm_thread_pool).map(callgraph, gen).run()
 
 
 doc_generation_instruction = '''

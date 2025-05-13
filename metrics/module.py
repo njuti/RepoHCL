@@ -1,11 +1,9 @@
 import os.path
-from functools import reduce
 from typing import List
 
 from loguru import logger
 
-from utils import SimpleLLM, prefix_with, ChatCompletionSettings, TaskDispatcher, llm_thread_pool, Task
-from . import EvaContext
+from utils import SimpleLLM, prefix_with, ChatCompletionSettings, TaskDispatcher, ProjectSettings, Task
 from .doc import ModuleDoc
 from .metric import Metric
 
@@ -101,8 +99,7 @@ class ModuleMetric(Metric):
         # 如果没有API，报错
         assert len(apis) > 0, 'no api found'
         # 使用函数描述组织上下文
-        api_docs = reduce(lambda x, y: x + y,
-                          map(lambda a: f'- {a}\n > {ctx.load_function_doc(a).description}\n\n', apis))
+        api_docs = ''.join(map(lambda a: f'- {a}\n > {ctx.load_function_doc(a).description}\n\n', apis))
         prompt = modules_summarize_prompt.format(api_docs=api_docs, api_example=apis[0])
         # 生成模块文档
         # TODO：模块文档格式总不规范，LLMs常篡改函数名称，导致函数无法找到
@@ -153,7 +150,7 @@ class ModuleMetric(Metric):
             ctx.save_module_doc(doc)
             logger.info(f'[ModuleMetric] gen doc for module {i + 1}/{len(drafts)}: {m.name}')
 
-        TaskDispatcher(llm_thread_pool).adds(list(map(lambda args: Task(f=gen, args=args), enumerate(drafts)))).run()
+        TaskDispatcher(ProjectSettings.llm_thread_pool).adds(list(map(lambda args: Task(f=gen, args=args), enumerate(drafts)))).run()
 
     def eva(self, ctx):
         try:

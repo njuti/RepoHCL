@@ -2,7 +2,8 @@ from typing import List
 
 from loguru import logger
 
-from utils import SimpleLLM, ChatCompletionSettings, prefix_with, TaskDispatcher, llm_thread_pool
+from utils import SimpleLLM, ChatCompletionSettings, prefix_with, TaskDispatcher
+from utils.settings import ProjectSettings
 from .doc import ApiDoc, ClazzDoc
 from .function import documentation_guideline
 from .metric import Metric, FieldDef, ClazzDef
@@ -37,7 +38,7 @@ class ClazzMetric(Metric):
             ctx.save_clazz_doc(signature, doc)
             logger.info(f'[ClazzMetric] parse {signature}')
 
-        TaskDispatcher(llm_thread_pool).map(callgraph, gen).run()
+        TaskDispatcher(ProjectSettings.llm_thread_pool).map(callgraph, gen).run()
 
 
 doc_generation_instruction = (

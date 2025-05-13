@@ -16,22 +16,6 @@ from .metric import Metric, EvaContext, FuncDef, FieldDef
 # 使用ctags和joern工具解析C/C++代码
 class CParser(Metric):
 
-    @classmethod
-    def _get_visible_functions(cls, ctx: EvaContext) -> Set[str]:
-        # ctags 生成.h中的函数列表
-        if not os.path.exists(pjoin(ctx.output_path, 'tags')):
-            subprocess.run(['ctags', '-R', '--languages=C,C++', '--c-kinds=p', '-f', pjoin(ctx.output_path, 'tags'),
-                            ctx.resource_path])
-        s = set()
-        with open(pjoin(ctx.output_path, 'tags'), 'r') as f:
-            for l in f:
-                args: List[str] = l.strip().split('\t')
-                name = args[0]
-                filename = args[1]
-                if filename.endswith(('.h', '.hpp')):
-                    s.add(name)
-        return s
-
     def eva(self, ctx: EvaContext):
         # joern 解析软件
         if not os.path.exists(pjoin(ctx.output_path, 'methods.jsonl')):
@@ -39,7 +23,8 @@ class CParser(Metric):
                             '--param', f'path={ctx.resource_path}'])
         # 读取函数调用图
         self._load_callgraph(ctx)
-        logger.info(f'[CParser] callgraph size: {len(ctx.callgraph.nodes)}, {len(ctx.callgraph.edges)}')
+        logger.info(
+            f'[CParser] callgraph size: {len(ctx.callgraph.nodes)}({len(ctx.api_iter())}), {len(ctx.callgraph.edges)}')
         # 读取类调用图
         self._load_clazz_callgraph(ctx)
         logger.info(
@@ -69,19 +54,6 @@ class CParser(Metric):
                 for t in content['callees']:
                     callgraph.add_edge(signature, t)
         ctx.callgraph = remove_cycle(callgraph)
-
-    # 去除类型中的修饰符
-    @classmethod
-    def _trim_type(cls, t: str) -> str:
-        return re.sub(r'[*&]|(\[\d*])|const|volatile|restrict', '', t).strip()
-
-    @classmethod
-    def _get_access(cls, modifier: str) -> str:
-        if 'PRIVATE' in modifier:
-            return 'private'
-        elif 'PROTECTED' in modifier:
-            return 'protected'
-        return 'public'
 
     @classmethod
     def _load_clazz_callgraph(cls, ctx: EvaContext):
@@ -140,3 +112,32 @@ class CParser(Metric):
             code += s
         code += '};'
         return code
+
+    @classmethod
+    def _get_visible_functions(cls, ctx: EvaContext) -> Set[str]:
+        # ctags 生成.h中的函数列表
+        if not os.path.exists(pjoin(ctx.output_path, 'tags')):
+            subprocess.run(['ctags', '-R', '--languages=C,C++', '--c-kinds=p', '-f', pjoin(ctx.output_path, 'tags'),
+                            ctx.resource_path])
+        s = set()
+        with open(pjoin(ctx.output_path, 'tags'), 'r') as f:
+            for l in f:
+                args: List[str] = l.strip().split('\t')
+                name = args[0]
+                filename = args[1]
+                if filename.endswith(('.h', '.hpp')):
+                    s.add(name)
+        return s
+
+    # 去除类型中的修饰符
+    @classmethod
+    def _trim_type(cls, t: str) -> str:
+        return re.sub(r'[*&]|(\[\d*])|const|volatile|restrict', '', t).strip()
+
+    @classmethod
+    def _get_access(cls, modifier: str) -> str:
+        if 'PRIVATE' in modifier:
+            return 'private'
+        elif 'PROTECTED' in modifier:
+            return 'protected'
+        return 'public'

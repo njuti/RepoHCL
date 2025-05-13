@@ -1,11 +1,10 @@
 import os.path
-from functools import reduce
 from typing import List
 
 import networkx as nx
 from loguru import logger
 
-from utils import SimpleLLM, ChatCompletionSettings, prefix_with, TaskDispatcher, llm_thread_pool
+from utils import SimpleLLM, ChatCompletionSettings, prefix_with, TaskDispatcher, ProjectSettings
 from .doc import ApiDoc
 from .metric import Metric, FieldDef, FuncDef
 
@@ -15,7 +14,11 @@ documentation_guideline = (
     "for the target object in a professional way."
 )
 
+
 # 为函数生成文档V2
+# 1. 使用调用关系生成函数文档
+# 2. 使用被调用关系修正函数文档
+# 实践中发现，修正效果一般，有待改进
 class FunctionV2Metric(Metric):
 
     @classmethod
@@ -51,7 +54,7 @@ class FunctionV2Metric(Metric):
             ctx.save_doc(cls.get_v2_draft_filename(ctx, f.filename), doc)
             logger.info(f'[FunctionV2Metric] parse {signature}')
 
-        TaskDispatcher(llm_thread_pool).map(callgraph, gen).run()
+        TaskDispatcher(ProjectSettings.llm_thread_pool).map(callgraph, gen).run()
 
     @classmethod
     def _revise(cls, ctx):
@@ -73,19 +76,21 @@ class FunctionV2Metric(Metric):
                 ctx.save_function_doc(signature, draft_doc)
                 return
             # TODO，简化
-            prompt = doc_revised_prompt.format(referencer=reduce(
-                lambda x, y: x + y,
+            referencer_docs = ''.join(
                 map(lambda r: f'**Function**: `{r.name}`\n\n**Document**:\n\n{prefix_with(r.markdown(), "> ")}\n---\n',
-                    referencer)),
-                lang = ctx.lang.markdown,
-                parameters = prefix_with(
-                    '#### Parameters\n'
-                    '- Parameter1: XXX\n'
-                    '- Parameter2: XXX\n'
-                    '- ...', '> ' if len(f.params) else '\n').strip(),
+                    referencer))
+            parameter_docs = prefix_with(
+                '#### Parameters\n'
+                '- Parameter1: XXX\n'
+                '- Parameter2: XXX\n'
+                '- ...', '> ' if len(f.params) else '\n').strip()
+            prompt = doc_revised_prompt.format(
+                referencer=referencer_docs,
+                lang=ctx.lang.markdown,
+                parameters=parameter_docs,
                 function_doc=prefix_with(draft_doc.markdown(), '> '))
             res = SimpleLLM(ChatCompletionSettings()).add_system_msg(prompt).add_user_msg(documentation_guideline).ask(
-                lambda x: x[x.find('#### Description'):] # 去除标题
+                lambda x: x[x.find('#### Description'):]  # 去除标题
             )
             res = f'### {signature}\n' + res
             doc: ApiDoc = ApiDoc.from_chapter(res)
@@ -93,7 +98,8 @@ class FunctionV2Metric(Metric):
             ctx.save_function_doc(signature, doc)
             logger.info(f'[FunctionV2Metric] revise {signature}')
 
-        TaskDispatcher(llm_thread_pool).map(nx.reverse(callgraph), gen).run()
+        TaskDispatcher(ProjectSettings.llm_thread_pool).map(nx.reverse(callgraph), gen).run()
+
 
 # Currently, you are in a project and the related hierarchical structure of this project is as follows:
 # {project_structure}
@@ -167,7 +173,6 @@ Please note:
 
 class _FunctionPromptBuilder:
     _prompt: str = doc_generation_instruction
-
 
     def name(self, name: str):
         self._prompt = self._prompt.replace('{code_name}', name)

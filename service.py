@@ -219,8 +219,6 @@ Please Note:
         p = self._prompt.format(software=prefix_with(s, '> '))
         llm = SimpleLLM(ChatCompletionSettings())
         res = llm.add_user_msg(p).ask()
-        with open('compare.md', 'w') as f:
-            f.write(res)
         return res
 
 

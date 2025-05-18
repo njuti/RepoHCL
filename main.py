@@ -3,9 +3,9 @@ import shutil
 
 import click
 
-from metrics import EvaContext, CParser, FunctionMetric, ClazzMetric, ModuleMetric, RepoV2Metric, JSlangParser, \
-    ModuleV2Metric
-from utils.common import LangEnum
+from metrics import EvaContext
+from service import eva
+from utils import LangEnum
 
 
 # def response_with_gitbook(doc_path: str):
@@ -44,8 +44,9 @@ def main(path, lang):
     # 移动到工作路径
     shutil.copytree(path, os.path.join('resource', basename), dirs_exist_ok=True)
     # 初始化上下文
-    ctx = EvaContext(doc_path=os.path.join('docs', basename), resource_path=os.path.join('resource', basename),
-                     output_path=os.path.join('output', basename), lang=LangEnum.from_cli(lang))
+    ctx = EvaContext(repo=basename, lang=LangEnum.from_cli(lang),
+                     doc_path=os.path.join('docs', basename), resource_path=os.path.join('resource', basename),
+                     output_path=os.path.join('output', basename))
     # 开始运行
     eva(ctx, LangEnum.from_cli(lang))
     # 生成gitbook输出
@@ -53,29 +54,6 @@ def main(path, lang):
     # 清扫工作路径
     shutil.rmtree(os.path.join('resource', basename))
     shutil.rmtree(os.path.join('output', basename))
-
-
-def eva(ctx: EvaContext, lang: LangEnum):
-    # 生成函数列表、类列表、函数调用图、类调用图
-    if lang == LangEnum.cpp:
-        CParser().eva(ctx)
-    elif lang == LangEnum.javascript:
-        JSlangParser().eva(ctx)
-    else:
-        raise NotImplementedError(f'{lang} not supported')
-    # 生成软件目录结构，TODO：暂时不用了
-    # StructureMetric().eva(ctx)
-    # 生成函数文档
-    FunctionMetric().eva(ctx)
-    # 生成类文档
-    ClazzMetric().eva(ctx)
-    # 生成模块文档，若API数量过多，则使用V2版本
-    if len(ctx.api_iter()) > 1500:
-        ModuleV2Metric().eva(ctx)
-    else:
-        ModuleMetric().eva(ctx)
-    # 生成仓库文档
-    RepoV2Metric().eva(ctx)
 
 
 if __name__ == '__main__':

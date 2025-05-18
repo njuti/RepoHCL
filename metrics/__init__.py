@@ -7,6 +7,7 @@ from .metric import Metric, FuncDef, FieldDef, EvaContext, ClazzDef
 from .module import ModuleMetric
 from .module_v2 import ModuleV2Metric
 from .module_v3 import ModuleV3Metric
+from .module_v4 import ModuleV4Metric
 from .parser import CParser
 from .repo import RepoMetric
 from .repo_v2 import RepoV2Metric
@@ -14,4 +15,5 @@ from .structure import StructureMetric
 
 __all__ = ['Metric', 'FuncDef', 'FieldDef', 'EvaContext', 'ClazzDef', 'CParser', 'JSlangParser',
            'Doc', 'ApiDoc', 'ClazzDoc', 'ModuleDoc', 'StructureMetric', 'FunctionMetric', 'FunctionV2Metric',
-           'ClazzMetric', 'ModuleMetric', 'ModuleV2Metric', 'ModuleV3Metric', 'RepoMetric', 'RepoV2Metric', 'RepoDoc']
+           'ClazzMetric', 'ModuleMetric', 'ModuleV2Metric', 'ModuleV3Metric', 'ModuleV4Metric', 'RepoMetric',
+           'RepoV2Metric', 'RepoDoc']

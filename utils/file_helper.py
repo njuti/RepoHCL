@@ -42,11 +42,10 @@ class ZipArchive(Archive):
         temp_path = tempfile.mkdtemp()
         self._f.extractall(temp_path)
         # 如果目录下没有文件 && 目录下只有一个文件夹
-        while (len(list(filter(lambda f: os.path.isfile(os.path.join(temp_path, f)),os.listdir(temp_path)))) == 0 and
-                len(os.listdir(temp_path)) == 1):
+        while (len(list(filter(lambda f: os.path.isfile(os.path.join(temp_path, f)), os.listdir(temp_path)))) == 0 and
+               len(os.listdir(temp_path)) == 1):
             temp_path = os.path.join(temp_path, os.listdir(temp_path)[0])
         shutil.move(temp_path, path)
-
 
     def decompress_by_name(self, name: str, path: str) -> None:
         if self._prefix is not None and len(self._prefix):
@@ -77,11 +76,10 @@ class TarArchive(Archive):
         temp_path = tempfile.mkdtemp()
         self._f.extractall(temp_path)
         # 如果目录下没有文件 && 目录下只有一个文件夹
-        while (len(list(filter(lambda f: os.path.isfile(os.path.join(temp_path,f)),os.listdir(temp_path)))) == 0 and
+        while (len(list(filter(lambda f: os.path.isfile(os.path.join(temp_path, f)), os.listdir(temp_path)))) == 0 and
                len(os.listdir(temp_path)) == 1):
-            temp_path =os.path.join(temp_path, os.listdir(temp_path)[0])
+            temp_path = os.path.join(temp_path, os.listdir(temp_path)[0])
         shutil.move(temp_path, path)
-
 
     def decompress_by_name(self, name: str, path: str) -> None:
         if self._prefix is not None and len(self._prefix):

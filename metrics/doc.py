@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import json
 import re
 from abc import abstractmethod, ABC
-from typing import List, Optional, override, TypeVar
+from typing import List, Optional, override, TypeVar, Dict
 
 from pydantic import BaseModel, field_serializer
 
 # T 表示Doc的子类，在Python中仅用于类型提示
 T = TypeVar('T', bound='Doc')
+
+
 # 文档对象基类，描述了怎么从md文件中解析出文档对象，如何将文档对象转化为md文件
 class Doc(ABC, BaseModel):
     name: str  # 符号名称
@@ -58,6 +61,16 @@ class Doc(ABC, BaseModel):
     @abstractmethod
     def doc_type(cls) -> str:
         pass
+
+    # 从JSON字符串中解析出文档对象，不要重载
+    @classmethod
+    def from_json(cls, s: str) -> Doc:
+        return cls.from_dict(json.loads(s))
+
+    # 将Dict对象转化为文档对象
+    @classmethod
+    def from_dict(cls, d: Dict) -> Doc:
+        return cls.model_validate(d)
 
 
 # 函数文档
@@ -153,6 +166,11 @@ class ModuleDoc(Doc):
     def doc_type(cls) -> str:
         return 'module'
 
+    @classmethod
+    def from_dict(cls, d: Dict) -> Doc:
+        d['functions'] = list(map(lambda x: x.strip('- '), d['functions'].splitlines()))
+        return cls.model_validate(d)
+
 
 # 仓库文档
 class RepoDoc(Doc):
@@ -189,3 +207,11 @@ class RepoDoc(Doc):
     @override
     def doc_type(cls) -> str:
         return 'repo'
+
+    @classmethod
+    def from_dict(cls, d: Dict) -> Doc:
+        d['features'] = list(map(lambda x: x.strip('- '), d['features'].splitlines()))
+        d['standards'] = list(map(lambda x: x.strip('- '), d['standards'].splitlines()))
+        if 'scenarios' in d:
+            d['scenarios'] = list(map(lambda x: x.strip('- '), d['scenarios'].splitlines()))
+        return cls.model_validate(d)

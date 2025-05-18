@@ -105,7 +105,7 @@ class FunctionV2Metric(Metric):
 # {project_structure}
 # The path of the document you need to generate in this project is {file_path}.
 doc_generation_instruction = '''
-You are an AI documentation assistant, and your task is to generate documentation based on the given code of an object.
+You are an AI documentation assistant, and your task is to generate documentation based on the given code.
 The purpose of the documentation is to help developers and beginners understand the function and specific usage of the code.
 Now you need to generate a document for a Function, whose name is `{code_name}`.
 

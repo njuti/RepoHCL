@@ -1,7 +1,7 @@
 import os
 from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass, field
-from typing import List, TypeVar, Optional, Type, Iterator
+from typing import List, TypeVar, Optional, Type
 
 import networkx as nx
 
@@ -64,12 +64,14 @@ T = TypeVar('T', bound=Doc)
 
 @dataclass
 class EvaContext:
+    repo: str  # 分析的软件名称
     doc_path: str  # 文档存储路径
     resource_path: str  # 源代码路径
     output_path: str  # 中间产物存储路径
     lang: LangEnum  # 语言类型
 
-    def __init__(self, doc_path: str, resource_path: str, output_path: str, lang: LangEnum):
+    def __init__(self, repo: str, lang: LangEnum, doc_path: str, resource_path: str, output_path: str):
+        self.repo = repo
         self.doc_path = doc_path
         os.makedirs(self.doc_path, exist_ok=True)
         self.resource_path = resource_path

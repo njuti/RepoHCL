@@ -1,8 +1,15 @@
+import os
+import time
+import uuid
 from dataclasses import dataclass
 from enum import Enum
 from functools import reduce
 
 import networkx as nx
+import requests
+from loguru import logger
+
+from .file_helper import resolve_archive
 
 
 def prefix_with(s: str, p: str) -> str:
@@ -22,6 +29,7 @@ class LangEnum(_Lang, Enum):
     # TODO: 其他语言
     # rust = 'Rust', 'rust', 'rs'
     javascript = 'JavaScript', 'javascript', 'js'
+
     # java = 'Java', 'java', 'java'
     # python = 'Python', 'python', 'py'
 
@@ -48,3 +56,23 @@ def remove_cycle(callgraph: nx.DiGraph):
         edge_to_remove = min(cycle, key=lambda x: rank[x[1]])
         callgraph.remove_edge(*edge_to_remove)
     return callgraph
+
+
+# 发送请求，重试5次
+def post(url: str, content: str, retry: int = 5):
+    err = None
+    while retry > 0:
+        retry -= 1
+        try:
+            res = requests.post(url,
+                                data=content,
+                                headers={'Content-Type': 'application/json'})
+            logger.info(f'requests send, status:{res.status_code}, message:{res.text}')
+            return
+        except Exception as e:
+            err = e
+            logger.error(f'request fail, err={e}')
+            time.sleep(1)
+    raise Exception(f'Request Failed, err={err}')
+
+

@@ -5,9 +5,9 @@ from loguru import logger
 
 from utils import SimpleLLM, prefix_with, ChatCompletionSettings, SimpleRAG, RagSettings, TaskDispatcher, Task, \
     ProjectSettings
-from . import ModuleMetric
 from .doc import ModuleDoc
 from .metric import EvaContext
+from .module import ModuleMetric
 
 modules_prompt = '''
 You are an expert in software architecture analysis. 
@@ -84,7 +84,7 @@ class ModuleV2Metric(ModuleMetric):
             # 使用聚类算法初步划分模块，并由大模型总结模块文档
             drafts = self._draft_v2(ctx)
             # 由大模型合并模块文档
-            drafts = self._merge(ctx, drafts)
+            drafts = self.merge(ctx, drafts)
             # 由大模型增强模块文档
             self._enhance(ctx, drafts)
         except AssertionError as e:
@@ -127,7 +127,7 @@ class ModuleV2Metric(ModuleMetric):
 
     # 合并模块初稿
     @classmethod
-    def _merge(cls, ctx: EvaContext, drafts: List[ModuleDoc]) -> List[ModuleDoc]:
+    def merge(cls, ctx: EvaContext, drafts: List[ModuleDoc]) -> List[ModuleDoc]:
         existed_draft_doc = ctx.load_docs(cls.get_draft_filename(ctx), ModuleDoc)
         if len(existed_draft_doc):
             logger.info(f'[ModuleV2Metric] load modules, modules count: {len(existed_draft_doc)}')

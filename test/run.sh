@@ -18,7 +18,7 @@ fi
 echo "Library Name: $library"
 echo "Version: $version"
 
-docker build -f "$1" -t test_"$library":"$version" --build-arg HTTPS_PROXY=http://127.0.0.1:7897  --build-arg HTTPS_PROXY=http://127.0.0.1:7897 --network=host  --progress=plain .
+docker build -f "$1" -t test_"$library":"$version" .
 
 container_id=$(docker create test_"$library":"$version")
 
